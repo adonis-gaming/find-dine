@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Find Dine</title>
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+
+  <!-- Swiper -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@9/swiper-bundle.min.css"/>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 0; padding: 24px; text-align: center; }
+    h1 { margin: 0 0 8px; }
+    h2 { margin: 8px 0; }
+    ul { list-style: none; padding: 0; margin: 8px 0; }
+    li { margin: 4px 0; }
+    button { cursor: pointer; }
+
+    /* Card deck */
+    .swiper { width: 320px; height: 440px; margin: 20px auto; }
+    .swiper-slide {
+      background: #fff; border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,.12);
+      display: flex; flex-direction: column; justify-content: space-between; align-items: center;
+      padding: 24px; box-sizing: border-box;
+    }
+    .card-title { font-size: 24px; font-weight: 700; margin: 0; flex: 1; display: flex;
+      align-items: center; justify-content: center; text-align: center; }
+
+    .vote-buttons { display: flex; gap: 12px; width: 100%; justify-content: center; }
+    .vote-buttons button {
+      border: 0; padding: 10px 14px; border-radius: 10px; font-size: 16px; min-width: 110px;
+      box-shadow: 0 2px 6px rgba(0,0,0,.08);
+    }
+
+    /* Add Restaurants list */
+    .rest-row { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 6px 0; }
+    .rest-name { font-weight: 600; }
+    .rest-by { font-size: 12px; color: #666; }
+    .rest-remove { background: #ffe6e6; border: 1px solid #ffb3b3; padding: 4px 8px; border-radius: 6px; }
+
+    .muted { color:#666; }
+    .hidden { display:none !important; }
+
+    .bar { height:1px; background:#eee; margin:16px auto; width:320px; }
+  </style>
+</head>
+<body>
+  <h1>Party App</h1>
+
+  <!-- Lobby -->
+  <div id="lobby">
+    <div style="margin-bottom:10px;">
+      <input id="name" placeholder="Your name" />
+      <button onclick="createParty()">Create Party</button>
+    </div>
+    <div>
+      <input id="joinCode" placeholder="Party code" />
+      <input id="joinName" placeholder="Your name" />
+      <button onclick="joinParty()">Join Party</button>
+    </div>
+  </div>
+
+  <!-- Party -->
+  <div id="party" class="hidden">
+    <h2>Party Code: <span id="partyCode"></span></h2>
+    <h3>Members (<span id="memberCount"></span>/10):</h3>
+    <ul id="memberList"></ul>
+
+    <div id="hostControls" class="hidden">
+      <button id="startAddingBtn" onclick="startAdding()">Start Adding Restaurants</button>
+    </div>
+
+    <!-- Adding phase -->
+    <div id="addRestaurants" class="hidden">
+      <div class="bar"></div>
+      <div style="margin-bottom:8px;">
+        <input id="restaurantName" placeholder="Restaurant name" />
+        <button onclick="addRestaurant()">Add</button>
+      </div>
+      <div class="muted" style="margin-bottom:8px;">You can remove restaurants you added.</div>
+      <div id="restaurantList"></div>
+
+      <div id="beginSelectionHost" class="hidden" style="margin-top:12px;">
+        <button onclick="beginSelection()">Begin Swiping</button>
+      </div>
+    </div>
+
+    <!-- Voting phase -->
+    <div id="votingPhase" class="hidden">
+      <div class="bar"></div>
+      <div id="voteList"></div>
+      <div style="margin-top:10px;">
+        <button id="finishEarlyBtn" onclick="submitVotes()">Finished Swiping</button>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div id="winnerPhase" class="hidden">
+      <div class="bar"></div>
+      <h3 id="winnerText"></h3>
+      <div><button onclick="location.reload()">New Party</button></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/swiper@9/swiper-bundle.min.js"></script>
+  <script>
+    const socket = io();
+
+    // Local state
+    let myName = "";
+    let myCode = "";
+    let currentHost = "";
+    let liked = [];
+    let restaurants = []; // in adding phase: array of {name, added_by}; in voting: array of names
+    let swiper;
+
+    // Helpers
+    const $ = sel => document.querySelector(sel);
+    const show = (id, on) => { const el = $(id); if (!el) return; el.classList.toggle('hidden', !on); };
+
+    /** Lobby actions **/
+    function createParty() {
+      myName = $("#name").value.trim();
+      if (!myName) return alert("Enter your name");
+      socket.emit("create_party", { name: myName });
+    }
+    function joinParty() {
+      myName = $("#joinName").value.trim();
+      myCode = $("#joinCode").value.trim().toUpperCase();
+      if (!myName || !myCode) return alert("Enter name and code");
+      socket.emit("join_party", { name: myName, code: myCode });
+    }
+
+    /** Party render **/
+    function showParty(host, members) {
+      $("#lobby").classList.add("hidden");
+      $("#party").classList.remove("hidden");
+      $("#partyCode").innerText = myCode;
+      currentHost = host;
+
+      // members list (no duplicates — backend already dedups)
+      $("#memberList").innerHTML = "";
+      members.forEach(n => {
+        const li = document.createElement("li");
+        li.textContent = n + (n === host ? " (Host)" : "");
+        $("#memberList").appendChild(li);
+      });
+      $("#memberCount").innerText = members.length;
+
+      // host controls
+      show("#hostControls", myName === host);
+    }
+
+    /** Socket events from server **/
+    socket.on("party_created", data => {
+      myCode = data.code;
+      showParty(data.host, data.members);
+    });
+
+    socket.on("party_updated", data => {
+      // keeps UI in sync, prevents duplicates
+      showParty(data.host, data.members);
+    });
+
+    function startAdding() {
+      socket.emit("start_adding", { code: myCode, name: myName });
+    }
+
+    socket.on("adding_phase", () => {
+      show("#addRestaurants", true);
+      show("#beginSelectionHost", myName === currentHost); // host can force start anytime
+      // ask server for latest list implicitly — it will push on changes
+    });
+
+    // Render restaurant list (adding phase)
+    socket.on("restaurant_list", data => {
+      // In new backend this is an array of objects: {name, added_by}
+      restaurants = data.restaurants || [];
+      const wrap = $("#restaurantList");
+      wrap.innerHTML = "";
+      if (!restaurants.length) {
+        wrap.innerHTML = `<div class="muted">No restaurants yet.</div>`;
+        return;
+      }
+      restaurants.forEach(r => {
+        const row = document.createElement("div");
+        row.className = "rest-row";
+        const name = document.createElement("span");
+        name.className = "rest-name";
+        name.textContent = r.name;
+        const by = document.createElement("span");
+        by.className = "rest-by";
+        by.textContent = ` (by ${r.added_by})`;
+        row.appendChild(name);
+        row.appendChild(by);
+        if (r.added_by === myName) {
+          const btn = document.createElement("button");
+          btn.className = "rest-remove";
+          btn.textContent = "Remove";
+          btn.onclick = () => socket.emit("remove_restaurant", { code: myCode, restaurant: r.name });
+          row.appendChild(btn);
+        }
+        wrap.appendChild(row);
+      });
+    });
+
+    function addRestaurant() {
+      const name = $("#restaurantName").value.trim();
+      if (!name) return;
+      socket.emit("add_restaurant", { code: myCode, restaurant: name });
+      $("#restaurantName").value = "";
+    }
+
+    function beginSelection() {
+      socket.emit("begin_selection", { code: myCode, name: myName });
+    }
+
+    // Voting phase
+    socket.on("voting_phase", data => {
+      show("#addRestaurants", false);
+      show("#votingPhase", true);
+
+      liked = [];
+      restaurants = data.restaurants || []; // array of names
+
+      const voteList = $("#voteList");
+      voteList.innerHTML = `
+        <div class="swiper mySwiper">
+          <div class="swiper-wrapper">
+            ${restaurants.map(r => `
+              <div class="swiper-slide" data-restaurant="${r}">
+                <h3 class="card-title">${r}</h3>
+                <div class="vote-buttons">
+                  <button class="like-btn">❤️ Like</button>
+                  <button class="dislike-btn">❌ Dislike</button>
+                </div>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      `;
+
+      // Init Swiper in reliable slide mode
+      swiper = new Swiper(".mySwiper", {
+        spaceBetween: 24,
+        centeredSlides: true,
+        slidesPerView: 1,
+        effect: "slide",
+        grabCursor: true,
+        allowTouchMove: true
+      });
+
+      // Single delegated handler so late re-renders don't double-bind
+      voteList.onclick = (e) => {
+        if (!e.target.classList) return;
+        const isLike = e.target.classList.contains("like-btn");
+        const isDislike = e.target.classList.contains("dislike-btn");
+        if (!isLike && !isDislike) return;
+
+        const i = swiper.activeIndex;
+        const r = restaurants[i];
+        const slide = swiper.slides[i];
+        if (isLike) markLike(r, slide); else markDislike(r, slide);
+
+        if (i < restaurants.length - 1) swiper.slideNext();
+        else submitVotes();
+      };
+    });
+
+    function markLike(r, slide) {
+      if (!liked.includes(r)) liked.push(r);
+      const likeBtn = slide.querySelector(".like-btn");
+      const dislikeBtn = slide.querySelector(".dislike-btn");
+      likeBtn.style.background = "#d9f9d9";
+      likeBtn.textContent = "✅ Liked";
+      dislikeBtn.style.background = "";
+      dislikeBtn.textContent = "❌ Dislike";
+    }
+    function markDislike(r, slide) {
+      liked = liked.filter(x => x !== r);
+      const likeBtn = slide.querySelector(".like-btn");
+      const dislikeBtn = slide.querySelector(".dislike-btn");
+      dislikeBtn.style.background = "#ffdada";
+      dislikeBtn.textContent = "❌ Disliked";
+      likeBtn.style.background = "";
+      likeBtn.textContent = "❤️ Like";
+    }
+
+    function submitVotes() {
+      socket.emit("submit_vote", { code: myCode, name: myName, liked });
+      // UI feedback while waiting (server will either show results or send waiting_for_others)
+      $("#voteList").innerHTML = "<h3 class='muted'>Please wait for others to finish swiping…</h3>";
+    }
+
+    socket.on("waiting_for_others", () => {
+      $("#voteList").innerHTML = "<h3 class='muted'>Please wait for others to finish swiping…</h3>";
+    });
+
+    // Results
+    socket.on("winner", data => {
+      show("#votingPhase", false);
+      show("#winnerPhase", true);
+      $("#winnerText").textContent = data && data.restaurant
+        ? `Winner: ${data.restaurant} (${data.votes} vote${data.votes === 1 ? "" : "s"})`
+        : "No winner (no likes submitted)";
+    });
+
+    // Host leaves → disband
+    socket.on("host_left", data => {
+      alert(data.message || "Host has left. Lobby disbanded.");
+      location.reload();
+    });
+
+    // Simple error handler
+    socket.on("error", data => alert(data.message || "An error occurred"));
+  </script>
+</body>
+</html>
