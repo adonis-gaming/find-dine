@@ -1,103 +1,591 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Find Dine</title>
   <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
-
-  <!-- Swiper -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@9/swiper-bundle.min.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    body { font-family: system-ui, Arial, sans-serif; margin: 0; padding: 24px; text-align: center; }
-    h1 { margin: 0 0 8px; }
-    h2 { margin: 8px 0; }
-    ul { list-style: none; padding: 0; margin: 8px 0; }
-    li { margin: 4px 0; }
-    button { cursor: pointer; }
+    :root {
+      --primary-color: #6366f1;
+      --primary-hover: #5855eb;
+      --secondary-color: #f1f5f9;
+      --accent-color: #10b981;
+      --danger-color: #ef4444;
+      --warning-color: #f59e0b;
+      --text-primary: #1e293b;
+      --text-secondary: #64748b;
+      --text-muted: #94a3b8;
+      --border-color: #e2e8f0;
+      --bg-primary: #ffffff;
+      --bg-secondary: #f8fafc;
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+      --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+      --radius-sm: 0.375rem;
+      --radius-md: 0.5rem;
+      --radius-lg: 0.75rem;
+      --radius-xl: 1rem;
+    }
 
-    /* Card deck */
-    .swiper { width: 320px; height: 440px; margin: 20px auto; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: var(--text-primary);
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 2rem 1rem;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+    }
+
+    .app-header {
+      text-align: center;
+      margin-bottom: 3rem;
+      animation: fadeInUp 0.8s ease-out;
+    }
+
+    .app-title {
+      font-size: 3rem;
+      font-weight: 700;
+      color: white;
+      margin-bottom: 0.5rem;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .app-subtitle {
+      font-size: 1.1rem;
+      color: rgba(255,255,255,0.9);
+      font-weight: 400;
+    }
+
+    .card {
+      background: var(--bg-primary);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-xl);
+      padding: 2rem;
+      width: 100%;
+      max-width: 400px;
+      animation: fadeInUp 0.8s ease-out 0.2s both;
+    }
+
+    .card-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .form-row {
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-end;
+    }
+
+    .form-row .form-group {
+      flex: 1;
+      margin-bottom: 0;
+    }
+
+    label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-bottom: 0.5rem;
+    }
+
+    input {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border: 2px solid var(--border-color);
+      border-radius: var(--radius-md);
+      font-size: 1rem;
+      transition: all 0.2s ease;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .btn {
+      background: var(--primary-color);
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: var(--radius-md);
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      text-decoration: none;
+      min-height: 44px;
+    }
+
+    .btn:hover {
+      background: var(--primary-hover);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn-secondary {
+      background: var(--secondary-color);
+      color: var(--text-primary);
+    }
+
+    .btn-secondary:hover {
+      background: #e2e8f0;
+    }
+
+    .btn-success {
+      background: var(--accent-color);
+    }
+
+    .btn-success:hover {
+      background: #059669;
+    }
+
+    .btn-danger {
+      background: var(--danger-color);
+    }
+
+    .btn-danger:hover {
+      background: #dc2626;
+    }
+
+    .btn-small {
+      padding: 0.5rem 1rem;
+      font-size: 0.875rem;
+      min-height: 36px;
+    }
+
+    .btn-full {
+      width: 100%;
+    }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      margin: 2rem 0;
+      color: var(--text-muted);
+      font-size: 0.875rem;
+    }
+
+    .divider::before,
+    .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border-color);
+    }
+
+    .divider span {
+      padding: 0 1rem;
+    }
+
+    .party-info {
+      background: var(--bg-secondary);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      text-align: center;
+    }
+
+    .party-code {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--primary-color);
+      margin-bottom: 0.5rem;
+      letter-spacing: 0.1em;
+    }
+
+    .member-count {
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+    }
+
+    .member-list {
+      list-style: none;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      justify-content: center;
+      margin-top: 1rem;
+    }
+
+    .member-item {
+      background: white;
+      padding: 0.5rem 1rem;
+      border-radius: var(--radius-md);
+      font-size: 0.875rem;
+      font-weight: 500;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .member-item.host {
+      background: var(--primary-color);
+      color: white;
+    }
+
+    .restaurant-list {
+      max-height: 300px;
+      overflow-y: auto;
+      margin: 1rem 0;
+    }
+
+    .restaurant-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem;
+      background: var(--bg-secondary);
+      border-radius: var(--radius-md);
+      margin-bottom: 0.75rem;
+      transition: all 0.2s ease;
+    }
+
+    .restaurant-item:hover {
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .restaurant-info {
+      flex: 1;
+    }
+
+    .restaurant-name {
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 0.25rem;
+    }
+
+    .restaurant-by {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--text-muted);
+    }
+
+    .empty-state-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+    }
+
+    /* Swiper Styles */
+    .swiper {
+      width: 100%;
+      max-width: 350px;
+      height: 500px;
+      margin: 2rem auto;
+    }
+
     .swiper-slide {
-      background: #fff; border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,.12);
-      display: flex; flex-direction: column; justify-content: space-between; align-items: center;
-      padding: 24px; box-sizing: border-box;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-xl);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      padding: 2rem;
+      color: white;
+      position: relative;
+      overflow: hidden;
     }
-    .card-title { font-size: 24px; font-weight: 700; margin: 0; flex: 1; display: flex;
-      align-items: center; justify-content: center; text-align: center; }
 
-    .vote-buttons { display: flex; gap: 12px; width: 100%; justify-content: center; }
-    .vote-buttons button {
-      border: 0; padding: 10px 14px; border-radius: 10px; font-size: 16px; min-width: 110px;
-      box-shadow: 0 2px 6px rgba(0,0,0,.08);
+    .swiper-slide::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
+      z-index: 1;
     }
 
-    /* Add Restaurants list */
-    .rest-row { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 6px 0; }
-    .rest-name { font-weight: 600; }
-    .rest-by { font-size: 12px; color: #666; }
-    .rest-remove { background: #ffe6e6; border: 1px solid #ffb3b3; padding: 4px 8px; border-radius: 6px; }
+    .swiper-slide > * {
+      position: relative;
+      z-index: 2;
+    }
 
-    .muted { color:#666; }
-    .hidden { display:none !important; }
+    .card-restaurant-title {
+      font-size: 1.75rem;
+      font-weight: 700;
+      text-align: center;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
 
-    .bar { height:1px; background:#eee; margin:16px auto; width:320px; }
+    .vote-buttons {
+      display: flex;
+      gap: 1rem;
+      width: 100%;
+      justify-content: center;
+    }
+
+    .vote-buttons .btn {
+      flex: 1;
+      max-width: 120px;
+      font-weight: 600;
+      border: 2px solid rgba(255,255,255,0.2);
+      backdrop-filter: blur(10px);
+    }
+
+    .like-btn {
+      background: rgba(16, 185, 129, 0.9) !important;
+    }
+
+    .like-btn:hover {
+      background: rgba(16, 185, 129, 1) !important;
+    }
+
+    .dislike-btn {
+      background: rgba(239, 68, 68, 0.9) !important;
+    }
+
+    .dislike-btn:hover {
+      background: rgba(239, 68, 68, 1) !important;
+    }
+
+    .waiting-message {
+      text-align: center;
+      padding: 3rem 2rem;
+      color: var(--text-secondary);
+    }
+
+    .waiting-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      animation: pulse 2s infinite;
+    }
+
+    .winner-announcement {
+      text-align: center;
+      padding: 2rem;
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: white;
+      border-radius: var(--radius-xl);
+      margin-bottom: 2rem;
+    }
+
+    .winner-icon {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+    }
+
+    .winner-restaurant {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .winner-votes {
+      font-size: 1rem;
+      opacity: 0.9;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .fade-in {
+      animation: fadeIn 0.5s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    @media (max-width: 480px) {
+      .container {
+        padding: 1rem 0.75rem;
+      }
+      
+      .app-title {
+        font-size: 2.5rem;
+      }
+      
+      .card {
+        padding: 1.5rem;
+      }
+      
+      .form-row {
+        flex-direction: column;
+        gap: 1rem;
+      }
+      
+      .swiper {
+        height: 450px;
+      }
+    }
   </style>
 </head>
 <body>
-  <h1>Find Dine</h1>
-
-  <!-- Lobby -->
-  <div id="lobby">
-    <div style="margin-bottom:10px;">
-      <input id="name" placeholder="Your name" />
-      <button onclick="createParty()">Create Party</button>
-    </div>
-    <div>
-      <input id="joinCode" placeholder="Party code" />
-      <input id="joinName" placeholder="Your name" />
-      <button onclick="joinParty()">Join Party</button>
-    </div>
-  </div>
-
-  <!-- Party -->
-  <div id="party" class="hidden">
-    <h2>Party Code: <span id="partyCode"></span></h2>
-    <h3>Members (<span id="memberCount"></span>/10):</h3>
-    <ul id="memberList"></ul>
-
-    <div id="hostControls" class="hidden">
-      <button id="startAddingBtn" onclick="startAdding()">Start Adding Restaurants</button>
+  <div class="container">
+    <div class="app-header">
+      <h1 class="app-title">🍽️ Find Dine</h1>
+      <p class="app-subtitle">Restaurant decisions made easy with friends</p>
     </div>
 
-    <!-- Adding phase -->
-    <div id="addRestaurants" class="hidden">
-      <div class="bar"></div>
-      <div style="margin-bottom:8px;">
-        <input id="restaurantName" placeholder="Restaurant name" />
-        <button onclick="addRestaurant()">Add</button>
+    <!-- Lobby -->
+    <div id="lobby" class="card">
+      <h2 class="card-title">Get Started</h2>
+      
+      <div class="form-group">
+        <label for="name">Your Name</label>
+        <input id="name" type="text" placeholder="Enter your name" />
       </div>
-      <div class="muted" style="margin-bottom:8px;">You can remove restaurants you added.</div>
-      <div id="restaurantList"></div>
+      
+      <button class="btn btn-full" onclick="createParty()">
+        🎉 Create New Party
+      </button>
 
-      <div id="beginSelectionHost" class="hidden" style="margin-top:12px;">
-        <button onclick="beginSelection()">Begin Swiping</button>
+      <div class="divider">
+        <span>or</span>
       </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="joinCode">Party Code</label>
+          <input id="joinCode" type="text" placeholder="ABCD" maxlength="4" style="text-transform: uppercase;" />
+        </div>
+        <div class="form-group">
+          <label for="joinName">Your Name</label>
+          <input id="joinName" type="text" placeholder="Enter your name" />
+        </div>
+      </div>
+      
+      <button class="btn btn-secondary btn-full" onclick="joinParty()">
+        🚪 Join Party
+      </button>
     </div>
 
-    <!-- Voting phase -->
-    <div id="votingPhase" class="hidden">
-      <div class="bar"></div>
-      <div id="voteList"></div>
-      <div style="margin-top:10px;">
-        <button id="finishEarlyBtn" onclick="submitVotes()">Finished Swiping</button>
+    <!-- Party -->
+    <div id="party" class="hidden">
+      <div class="party-info">
+        <div class="party-code" id="partyCode"></div>
+        <div class="member-count">
+          <span id="memberCount"></span>/10 members
+        </div>
+        <ul id="memberList" class="member-list"></ul>
       </div>
-    </div>
 
-    <!-- Results -->
-    <div id="winnerPhase" class="hidden">
-      <div class="bar"></div>
-      <h3 id="winnerText"></h3>
-      <div><button onclick="location.reload()">New Party</button></div>
+      <div id="hostControls" class="hidden">
+        <button id="startAddingBtn" class="btn btn-success btn-full" onclick="startAdding()">
+          ➕ Start Adding Restaurants
+        </button>
+      </div>
+
+      <!-- Adding phase -->
+      <div id="addRestaurants" class="hidden">
+        <div class="card">
+          <h3 class="card-title">Add Restaurants</h3>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <input id="restaurantName" type="text" placeholder="Restaurant name" />
+            </div>
+            <button class="btn btn-success" onclick="addRestaurant()">Add</button>
+          </div>
+          
+          <p style="font-size: 0.875rem; color: var(--text-muted); text-align: center; margin-bottom: 1rem;">
+            You can remove restaurants you added
+          </p>
+          
+          <div id="restaurantList" class="restaurant-list"></div>
+
+          <div id="beginSelectionHost" class="hidden">
+            <button class="btn btn-primary btn-full" onclick="beginSelection()">
+              👆 Begin Swiping
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Voting phase -->
+      <div id="votingPhase" class="hidden">
+        <div id="voteList"></div>
+        <div style="text-align: center; margin-top: 1rem;">
+          <button id="finishEarlyBtn" class="btn btn-secondary" onclick="submitVotes()">
+            ✅ Finished Swiping
+          </button>
+        </div>
+      </div>
+
+      <!-- Results -->
+      <div id="winnerPhase" class="hidden">
+        <div id="winnerAnnouncement" class="winner-announcement">
+          <div class="winner-icon">🏆</div>
+          <div id="winnerText"></div>
+        </div>
+        <button class="btn btn-primary btn-full" onclick="location.reload()">
+          🔄 Start New Party
+        </button>
+      </div>
     </div>
   </div>
 
@@ -110,39 +598,76 @@
     let myCode = "";
     let currentHost = "";
     let liked = [];
-    let restaurants = []; // in adding phase: array of {name, added_by}; in voting: array of names
+    let restaurants = [];
     let swiper;
 
     // Helpers
     const $ = sel => document.querySelector(sel);
-    const show = (id, on) => { const el = $(id); if (!el) return; el.classList.toggle('hidden', !on); };
+    const show = (id, on) => { 
+      const el = $(id); 
+      if (!el) return; 
+      el.classList.toggle('hidden', !on);
+      if (on) el.classList.add('fade-in');
+    };
 
     /** Lobby actions **/
     function createParty() {
       myName = $("#name").value.trim();
-      if (!myName) return alert("Enter your name");
+      if (!myName) {
+        $("#name").focus();
+        return;
+      }
       socket.emit("create_party", { name: myName });
     }
+
     function joinParty() {
       myName = $("#joinName").value.trim();
       myCode = $("#joinCode").value.trim().toUpperCase();
-      if (!myName || !myCode) return alert("Enter name and code");
+      if (!myName || !myCode) {
+        if (!myCode) $("#joinCode").focus();
+        else $("#joinName").focus();
+        return;
+      }
       socket.emit("join_party", { name: myName, code: myCode });
     }
 
+    // Auto-uppercase party code input
+    $("#joinCode").addEventListener('input', function(e) {
+      e.target.value = e.target.value.toUpperCase();
+    });
+
+    // Enter key handlers
+    $("#name").addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') createParty();
+    });
+
+    $("#joinName").addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') joinParty();
+    });
+
+    $("#joinCode").addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') joinParty();
+    });
+
+    $("#restaurantName").addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') addRestaurant();
+    });
+
     /** Party render **/
     function showParty(host, members) {
-      $("#lobby").classList.add("hidden");
-      $("#party").classList.remove("hidden");
+      show("#lobby", false);
+      show("#party", true);
       $("#partyCode").innerText = myCode;
       currentHost = host;
 
-      // members list (no duplicates — backend already dedups)
-      $("#memberList").innerHTML = "";
+      // members list
+      const memberList = $("#memberList");
+      memberList.innerHTML = "";
       members.forEach(n => {
         const li = document.createElement("li");
+        li.className = `member-item ${n === host ? 'host' : ''}`;
         li.textContent = n + (n === host ? " (Host)" : "");
-        $("#memberList").appendChild(li);
+        memberList.appendChild(li);
       });
       $("#memberCount").innerText = members.length;
 
@@ -157,7 +682,6 @@
     });
 
     socket.on("party_updated", data => {
-      // keeps UI in sync, prevents duplicates
       showParty(data.host, data.members);
     });
 
@@ -167,39 +691,53 @@
 
     socket.on("adding_phase", () => {
       show("#addRestaurants", true);
-      show("#beginSelectionHost", myName === currentHost); // host can force start anytime
-      // ask server for latest list implicitly — it will push on changes
+      show("#beginSelectionHost", myName === currentHost);
     });
 
     // Render restaurant list (adding phase)
     socket.on("restaurant_list", data => {
-      // In new backend this is an array of objects: {name, added_by}
       restaurants = data.restaurants || [];
       const wrap = $("#restaurantList");
       wrap.innerHTML = "";
+      
       if (!restaurants.length) {
-        wrap.innerHTML = `<div class="muted">No restaurants yet.</div>`;
+        wrap.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">🍽️</div>
+            <p>No restaurants added yet</p>
+          </div>
+        `;
         return;
       }
+      
       restaurants.forEach(r => {
-        const row = document.createElement("div");
-        row.className = "rest-row";
-        const name = document.createElement("span");
-        name.className = "rest-name";
+        const item = document.createElement("div");
+        item.className = "restaurant-item";
+        
+        const info = document.createElement("div");
+        info.className = "restaurant-info";
+        
+        const name = document.createElement("div");
+        name.className = "restaurant-name";
         name.textContent = r.name;
-        const by = document.createElement("span");
-        by.className = "rest-by";
-        by.textContent = ` (by ${r.added_by})`;
-        row.appendChild(name);
-        row.appendChild(by);
+        
+        const by = document.createElement("div");
+        by.className = "restaurant-by";
+        by.textContent = `Added by ${r.added_by}`;
+        
+        info.appendChild(name);
+        info.appendChild(by);
+        item.appendChild(info);
+        
         if (r.added_by === myName) {
           const btn = document.createElement("button");
-          btn.className = "rest-remove";
-          btn.textContent = "Remove";
+          btn.className = "btn btn-danger btn-small";
+          btn.innerHTML = "🗑️ Remove";
           btn.onclick = () => socket.emit("remove_restaurant", { code: myCode, restaurant: r.name });
-          row.appendChild(btn);
+          item.appendChild(btn);
         }
-        wrap.appendChild(row);
+        
+        wrap.appendChild(item);
       });
     });
 
@@ -220,7 +758,7 @@
       show("#votingPhase", true);
 
       liked = [];
-      restaurants = data.restaurants || []; // array of names
+      restaurants = data.restaurants || [];
 
       const voteList = $("#voteList");
       voteList.innerHTML = `
@@ -228,10 +766,10 @@
           <div class="swiper-wrapper">
             ${restaurants.map(r => `
               <div class="swiper-slide" data-restaurant="${r}">
-                <h3 class="card-title">${r}</h3>
+                <h3 class="card-restaurant-title">${r}</h3>
                 <div class="vote-buttons">
-                  <button class="like-btn">❤️ Like</button>
-                  <button class="dislike-btn">❌ Dislike</button>
+                  <button class="btn like-btn">❤️ Like</button>
+                  <button class="btn dislike-btn">❌ Pass</button>
                 </div>
               </div>
             `).join("")}
@@ -239,7 +777,7 @@
         </div>
       `;
 
-      // Init Swiper in reliable slide mode
+      // Init Swiper
       swiper = new Swiper(".mySwiper", {
         spaceBetween: 24,
         centeredSlides: true,
@@ -249,7 +787,7 @@
         allowTouchMove: true
       });
 
-      // Single delegated handler so late re-renders don't double-bind
+      // Vote button handlers
       voteList.onclick = (e) => {
         if (!e.target.classList) return;
         const isLike = e.target.classList.contains("like-btn");
@@ -259,10 +797,17 @@
         const i = swiper.activeIndex;
         const r = restaurants[i];
         const slide = swiper.slides[i];
-        if (isLike) markLike(r, slide); else markDislike(r, slide);
+        
+        if (isLike) markLike(r, slide); 
+        else markDislike(r, slide);
 
-        if (i < restaurants.length - 1) swiper.slideNext();
-        else submitVotes();
+        setTimeout(() => {
+          if (i < restaurants.length - 1) {
+            swiper.slideNext();
+          } else {
+            submitVotes();
+          }
+        }, 300);
       };
     });
 
@@ -270,48 +815,73 @@
       if (!liked.includes(r)) liked.push(r);
       const likeBtn = slide.querySelector(".like-btn");
       const dislikeBtn = slide.querySelector(".dislike-btn");
-      likeBtn.style.background = "#d9f9d9";
-      likeBtn.textContent = "✅ Liked";
-      dislikeBtn.style.background = "";
-      dislikeBtn.textContent = "❌ Dislike";
+      likeBtn.style.background = "rgba(16, 185, 129, 1)";
+      likeBtn.innerHTML = "✅ Liked";
+      dislikeBtn.style.background = "rgba(255,255,255,0.2)";
+      dislikeBtn.innerHTML = "❌ Pass";
     }
+
     function markDislike(r, slide) {
       liked = liked.filter(x => x !== r);
       const likeBtn = slide.querySelector(".like-btn");
       const dislikeBtn = slide.querySelector(".dislike-btn");
-      dislikeBtn.style.background = "#ffdada";
-      dislikeBtn.textContent = "❌ Disliked";
-      likeBtn.style.background = "";
-      likeBtn.textContent = "❤️ Like";
+      dislikeBtn.style.background = "rgba(239, 68, 68, 1)";
+      dislikeBtn.innerHTML = "❌ Passed";
+      likeBtn.style.background = "rgba(255,255,255,0.2)";
+      likeBtn.innerHTML = "❤️ Like";
     }
 
     function submitVotes() {
       socket.emit("submit_vote", { code: myCode, name: myName, liked });
-      // UI feedback while waiting (server will either show results or send waiting_for_others)
-      $("#voteList").innerHTML = "<h3 class='muted'>Please wait for others to finish swiping…</h3>";
+      $("#voteList").innerHTML = `
+        <div class="waiting-message">
+          <div class="waiting-icon">⏳</div>
+          <h3>Waiting for others to finish swiping...</h3>
+          <p>Hang tight while everyone makes their choices!</p>
+        </div>
+      `;
     }
 
     socket.on("waiting_for_others", () => {
-      $("#voteList").innerHTML = "<h3 class='muted'>Please wait for others to finish swiping…</h3>";
+      $("#voteList").innerHTML = `
+        <div class="waiting-message">
+          <div class="waiting-icon">⏳</div>
+          <h3>Waiting for others to finish swiping...</h3>
+          <p>Hang tight while everyone makes their choices!</p>
+        </div>
+      `;
     });
 
     // Results
     socket.on("winner", data => {
       show("#votingPhase", false);
       show("#winnerPhase", true);
-      $("#winnerText").textContent = data && data.restaurant
-        ? `Winner: ${data.restaurant} (${data.votes} vote${data.votes === 1 ? "" : "s"})`
-        : "No winner (no likes submitted)";
+      
+      const winnerText = $("#winnerText");
+      if (data && data.restaurant) {
+        winnerText.innerHTML = `
+          <div class="winner-restaurant">${data.restaurant}</div>
+          <div class="winner-votes">${data.votes} vote${data.votes === 1 ? '' : 's'}</div>
+        `;
+      } else {
+        winnerText.innerHTML = `
+          <div class="winner-restaurant">No Winner</div>
+          <div class="winner-votes">No restaurants were liked by anyone</div>
+        `;
+      }
     });
 
     // Host leaves → disband
     socket.on("host_left", data => {
-      alert(data.message || "Host has left. Lobby disbanded.");
+      alert(data.message || "Host has left. Party disbanded.");
       location.reload();
     });
 
     // Simple error handler
-    socket.on("error", data => alert(data.message || "An error occurred"));
+    socket.on("error", data => {
+      alert(data.message || "An error occurred");
+    });
   </script>
 </body>
 </html>
+
